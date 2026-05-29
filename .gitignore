@@ -1,0 +1,9 @@
+# Generated practice database — rebuild with: cd sql && python3 build_db.py
+sql/prep.db
+
+# Python
+__pycache__/
+*.pyc
+
+# Personal scratch SQL (write your attempts here without committing)
+sql/*scratch*.sql
