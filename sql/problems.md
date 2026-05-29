@@ -1,7 +1,8 @@
 # SQL Problems (30) — graded by topic
 
-Work against `prep.db`. Attempt each **before** opening `solutions.sql`.
-Run with: `python3 query.py "<your query>"` or put it in a file and pass the path.
+Attempt each **before** opening the solutions (`solutions.sql` = Postgres,
+`solutions_sqlite.sql` = SQLite). Run with `psql "$PREP_URL" -c "<query>"`
+(Postgres) or `python3 query.py "<query>"` (SQLite). See `HOW_TO_PRACTICE.md`.
 
 **Process for every problem (say it out loud):**
 1. What tables do I need, and how do they join?
@@ -62,7 +63,8 @@ post-aggregation filter — `HAVING`.) Show DC name + avg.
 only servers with at least 1 hot day, hot days descending.
 
 **Q15 ⭐⭐⭐** Monthly total cost per region. Bucket `cost_date` into `YYYY-MM` and
-group by region + month. (Use `strftime('%Y-%m', cost_date)`.)
+group by region + month. (Postgres: `to_char(cost_date,'YYYY-MM')`;
+SQLite: `strftime('%Y-%m', cost_date)`.)
 
 ---
 

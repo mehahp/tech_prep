@@ -1,5 +1,9 @@
-# Generated practice database — rebuild with: cd sql && python3 build_db.py
+# Generated practice artifacts — rebuild with: cd sql && python3 build_db.py
 sql/prep.db
+sql/seed.sql
+
+# Local Postgres data dir (if you initdb one inside the repo)
+sql/.pgdata/
 
 # Python
 __pycache__/

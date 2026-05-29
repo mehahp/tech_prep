@@ -20,16 +20,20 @@ is weighted accordingly.
 ```
 tech_prep/
 ├── README.md                  ← you are here (master plan)
+├── HOW_TO_PRACTICE.md         ← READ THIS: how to run + solve the problems
 ├── cheatsheets/
 │   ├── sql_patterns.md        ← THE daily-repeat file (SQL syntax + patterns)
 │   ├── python_patterns.md     ← daily-repeat file (Python syntax + patterns)
 │   └── communication.md       ← how to talk through a problem in 45 min
 ├── sql/
-│   ├── build_db.py            ← builds prep.db (run once)
-│   ├── query.py               ← run ad-hoc SQL:  python3 query.py "SELECT ..."
+│   ├── setup_pg.sh            ← spin up Postgres + load data (recommended)
+│   ├── schema.sql             ← Postgres DDL
+│   ├── build_db.py            ← generates seed.sql (Postgres) + prep.db (SQLite)
+│   ├── query.py               ← SQLite runner:  python3 query.py "SELECT ..."
 │   ├── schema.md              ← the data model you'll practice against
 │   ├── problems.md            ← 30 graded SQL problems
-│   └── solutions.sql          ← solutions (peek only after attempting)
+│   ├── solutions.sql          ← solutions, Postgres dialect (peek after trying)
+│   └── solutions_sqlite.sql   ← same solutions, SQLite dialect (fallback)
 ├── python/
 │   ├── patterns.py            ← runnable reference implementations
 │   ├── problems.md            ← coding problems w/ test cases
@@ -49,26 +53,29 @@ tech_prep/
 
 ---
 
-## Setup (do this first, ~1 minute)
+## Setup (do this first)
 
+**Postgres is the primary target — it's the most common interview SQL.** Full,
+step-by-step instructions (Docker, local Postgres, and a no-install SQLite
+fallback) plus the exact solve-a-problem workflow are in **`HOW_TO_PRACTICE.md`**.
+
+Quick start (Postgres via Docker):
 ```bash
 cd sql
-python3 build_db.py          # creates sql/prep.db with a cloud-infra dataset
-python3 query.py "SELECT name FROM sqlite_master WHERE type='table';"
+./setup_pg.sh                                       # starts Postgres, loads data
+export PREP_URL=postgresql://postgres:prep@localhost:5433/prep
+psql "$PREP_URL" -c "SELECT * FROM servers LIMIT 5;"
 ```
 
-Then run any query two ways:
-
+No Docker / offline? Zero-install SQLite fallback:
 ```bash
-# one-off:
+cd sql
+python3 build_db.py
 python3 query.py "SELECT * FROM servers LIMIT 5;"
-
-# from a file:
-python3 query.py myscratch.sql
 ```
 
-No external services needed — it's local SQLite, which supports CTEs and window
-functions just like Postgres for everything you'll be drilling.
+The dataset is identical across engines, so the answers match. The SQL cheatsheet
+shows **Postgres and SQLite side by side** for the few things that differ.
 
 ---
 
@@ -134,4 +141,5 @@ See `cheatsheets/communication.md` for the script.
 
 ## Start here
 
-Run setup above, then open `week_plan/day1_sql_foundations.md`.
+1. Read **`HOW_TO_PRACTICE.md`** and get a database running.
+2. Open `week_plan/day1_sql_foundations.md` and start the daily loop.

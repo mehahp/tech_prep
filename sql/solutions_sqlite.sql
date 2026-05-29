@@ -1,14 +1,9 @@
 -- ============================================================================
--- SQL SOLUTIONS (PostgreSQL dialect) for problems.md
--- PRIMARY file — Postgres is the most common interview SQL, so practice here.
--- (SQLite variant: solutions_sqlite.sql — only a few date/round queries differ.)
+-- SQL SOLUTIONS (SQLite dialect) for problems.md  -- run against prep.db
+-- This is the FALLBACK file. If you're practicing on Postgres (recommended),
+-- use solutions.sql instead. Only Q11,Q13,Q15,Q16,Q22,Q24,Q27,Q28,Q30 differ.
 -- Peek only AFTER you've attempted a problem.
--- Run one with psql, e.g.:
---   psql "$PREP_URL" -c "SELECT ...;"      (see HOW_TO_PRACTICE.md for $PREP_URL)
--- Postgres notes baked in below:
---   * ROUND(x, n) needs x to be numeric -> cast doubles: ROUND(avg::numeric, n)
---   * month bucket: to_char(d,'YYYY-MM');  day diff: dateA - dateB (integer days)
---   * date arithmetic: d + 1 (days) or d + INTERVAL '1 day'
+-- Run one with:  python3 query.py "<paste query body>"
 -- ============================================================================
 
 -- ---------------------------------------------------------------- Block A ----
@@ -90,8 +85,8 @@ GROUP BY server_id
 ORDER BY total_cost DESC
 LIMIT 5;
 
--- Q11: avg daily cpu_util per DC  (cast double -> numeric for ROUND)
-SELECT d.name AS dc_name, ROUND(AVG(u.cpu_util)::numeric, 3) AS avg_cpu
+-- Q11: avg daily cpu_util per DC
+SELECT d.name AS dc_name, ROUND(AVG(u.cpu_util), 3) AS avg_cpu
 FROM usage_metrics u
 JOIN servers s ON s.server_id = u.server_id
 JOIN data_centers d ON d.dc_id = s.dc_id
@@ -101,7 +96,7 @@ ORDER BY avg_cpu DESC;
 -- Q12: per region: total cost + avg cpu_util
 SELECT r.name AS region,
        ROUND(SUM(c.cost_usd), 2) AS total_cost,
-       ROUND(AVG(u.cpu_util)::numeric, 3) AS avg_cpu
+       ROUND(AVG(u.cpu_util), 3) AS avg_cpu
 FROM regions r
 JOIN data_centers d ON d.region_id = r.region_id
 JOIN servers s ON s.dc_id = d.dc_id
@@ -111,7 +106,7 @@ GROUP BY r.region_id, r.name
 ORDER BY total_cost DESC;
 
 -- Q13: DCs with avg cpu_util < 0.35  (HAVING = post-aggregation filter)
-SELECT d.name AS dc_name, ROUND(AVG(u.cpu_util)::numeric, 3) AS avg_cpu
+SELECT d.name AS dc_name, ROUND(AVG(u.cpu_util), 3) AS avg_cpu
 FROM usage_metrics u
 JOIN servers s ON s.server_id = u.server_id
 JOIN data_centers d ON d.dc_id = s.dc_id
@@ -127,13 +122,10 @@ FROM usage_metrics
 GROUP BY server_id
 HAVING SUM(CASE WHEN cpu_util > 0.8 THEN 1 ELSE 0 END) >= 1
 ORDER BY hot_days DESC;
--- Postgres-idiomatic alternative using FILTER:
---   COUNT(*) FILTER (WHERE cpu_util > 0.8) AS hot_days,
---   COUNT(*) FILTER (WHERE cpu_util < 0.2) AS cold_days
 
--- Q15: monthly cost per region  (to_char for the YYYY-MM bucket)
+-- Q15: monthly cost per region (strftime is SQLite; Postgres: to_char(cost_date,'YYYY-MM'))
 SELECT r.name AS region,
-       to_char(c.cost_date, 'YYYY-MM') AS month,
+       strftime('%Y-%m', c.cost_date) AS month,
        ROUND(SUM(c.cost_usd), 2) AS total_cost
 FROM cost_records c
 JOIN servers s ON s.server_id = c.server_id
@@ -149,7 +141,7 @@ SELECT server_id, metric_date, cpu_util,
        ROUND(AVG(cpu_util) OVER (
            PARTITION BY server_id ORDER BY metric_date
            ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
-       )::numeric, 3) AS moving_avg_7d
+       ), 3) AS moving_avg_7d
 FROM usage_metrics
 ORDER BY server_id, metric_date;
 
@@ -221,7 +213,7 @@ ranked AS (
            DENSE_RANK() OVER (PARTITION BY region_id ORDER BY avg_cpu DESC) AS rnk
     FROM per_server
 )
-SELECT r.name AS region, k.server_id, ROUND(k.avg_cpu::numeric, 3) AS avg_cpu, k.rnk
+SELECT r.name AS region, k.server_id, ROUND(k.avg_cpu, 3) AS avg_cpu, k.rnk
 FROM ranked k
 JOIN regions r ON r.region_id = k.region_id
 WHERE k.rnk <= 2
@@ -247,7 +239,6 @@ ORDER BY r.name, rd.cost_date;
 
 -- Q24: longest streak of consecutive days with cpu_util > 0.7 per server
 --      gaps-and-islands: within a streak, (date - row_number) is constant.
---      In Postgres, DATE - INTEGER = DATE, so we subtract rn directly.
 WITH hot AS (
     SELECT server_id, metric_date,
            ROW_NUMBER() OVER (PARTITION BY server_id ORDER BY metric_date) AS rn
@@ -256,7 +247,7 @@ WITH hot AS (
 ),
 grp AS (
     SELECT server_id, metric_date,
-           metric_date - rn::int AS grp_key
+           date(metric_date, '-' || rn || ' days') AS grp_key
     FROM hot
 ),
 streaks AS (
@@ -309,13 +300,13 @@ JOIN regions r ON r.region_id = agg.region_id
 ORDER BY cost_per_million_req ASC;
 
 -- Q27: week-over-week fleet cost growth (sequential 7-day buckets from start)
---      date - date = integer days in Postgres, so /7 gives the week index.
 WITH daily AS (
     SELECT cost_date, SUM(cost_usd) AS day_cost
     FROM cost_records GROUP BY cost_date
 ),
 weekly AS (
-    SELECT (cost_date - DATE '2025-03-01') / 7 AS week_idx,
+    SELECT CAST(julianday(cost_date) - julianday('2025-03-01') AS INTEGER) / 7
+             AS week_idx,
            SUM(day_cost) AS week_cost
     FROM daily
     GROUP BY week_idx
@@ -329,17 +320,17 @@ FROM weekly
 ORDER BY week_idx;
 
 -- Q28: MTTR (days) per service + open incident count (conditional agg + date math)
---      resolved_date - opened_date = integer days in Postgres.
 SELECT sv.name AS service,
        ROUND(AVG(CASE WHEN i.resolved_date IS NOT NULL
-                      THEN (i.resolved_date - i.opened_date)
-                 END)::numeric, 2) AS mttr_days,
-       COUNT(*) FILTER (WHERE i.resolved_date IS NULL) AS open_incidents,
-       COUNT(i.incident_id) AS total_incidents
+                      THEN julianday(i.resolved_date) - julianday(i.opened_date)
+                 END), 2) AS mttr_days,
+       SUM(CASE WHEN i.resolved_date IS NULL THEN 1 ELSE 0 END) AS open_incidents,
+       COUNT(*) AS total_incidents
 FROM services sv
 LEFT JOIN incidents i ON i.service_id = sv.service_id
 GROUP BY sv.service_id, sv.name
 ORDER BY mttr_days DESC NULLS LAST;
+-- (SQLite tolerates NULLS LAST; Postgres supports it natively too.)
 
 -- Q29: current monthly run-rate cost per service (latest day's cost * 30)
 WITH latest AS (SELECT MAX(cost_date) AS d FROM cost_records),
@@ -359,9 +350,9 @@ ORDER BY monthly_run_rate DESC;
 
 -- Q30: recursive CTE calendar LEFT JOIN fleet daily cost (missing days -> 0)
 WITH RECURSIVE cal(d) AS (
-    SELECT DATE '2025-03-01'
+    SELECT '2025-03-01'
     UNION ALL
-    SELECT d + 1 FROM cal WHERE d < DATE '2025-04-29'
+    SELECT date(d, '+1 day') FROM cal WHERE d < '2025-04-29'
 ),
 daily AS (
     SELECT cost_date, SUM(cost_usd) AS day_cost

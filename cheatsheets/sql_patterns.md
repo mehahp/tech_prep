@@ -5,7 +5,8 @@ many of these as you can **without looking**, then diff against this. Muscle
 memory of syntax is what frees your brain to think about the actual problem in
 the interview.
 
-SQLite and Postgres dialect notes are flagged `[SQLite]` / `[PG]` where they differ.
+**Postgres is the primary target** (most common interview SQL). Dialect notes are
+flagged `[PG]` / `[SQLite]` where they differ — drill the Postgres form first.
 
 ---
 

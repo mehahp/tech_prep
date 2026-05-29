@@ -92,11 +92,16 @@ services 1───* deployments *───────┘
 services 1───* incidents
 ```
 
-## SQLite date notes (matters in the interview)
-- Dates are stored as ISO text `'YYYY-MM-DD'`, which **sorts and compares
-  correctly as text** (`WHERE metric_date >= '2025-04-01'` works).
-- Useful functions: `date('2025-03-01','+7 days')`, `strftime('%Y-%m', d)` for
-  month bucketing, `strftime('%w', d)` for day-of-week (0=Sunday),
-  `julianday(a) - julianday(b)` for day differences.
-- These differ slightly from Postgres (`date_trunc`, `EXTRACT`, `a::date - b::date`).
-  `cheatsheets/sql_patterns.md` lists both dialects side by side.
+## Date notes (matters in the interview)
+On **Postgres** (primary), the date columns are real `DATE` types:
+- Add days: `d + 7` or `d + INTERVAL '7 days'`. Month bucket: `to_char(d,'YYYY-MM')`
+  or `date_trunc('month', d)`. Day-of-week: `EXTRACT(DOW FROM d)`.
+- Day difference is plain subtraction: `dateA - dateB` → integer days.
+- Gotcha: `ROUND(x, n)` needs `x` to be `numeric`. `cpu_util`/`mem_util` are
+  `double precision`, so write `ROUND(AVG(cpu_util)::numeric, 3)`.
+
+On **SQLite** (fallback) dates are ISO text `'YYYY-MM-DD'` (sorts/compares as text):
+`date('2025-03-01','+7 days')`, `strftime('%Y-%m', d)`, `strftime('%w', d)`
+(0=Sunday), `julianday(a) - julianday(b)` for day diffs.
+
+`cheatsheets/sql_patterns.md` lists both dialects side by side.
