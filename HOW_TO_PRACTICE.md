@@ -11,16 +11,26 @@ interview SQL); a zero-install SQLite fallback is included.
 Pick ONE. If you're not sure, pick A.
 
 ### Option A — Postgres via Docker (recommended, closest to a real interview)
-You need Docker installed. One command:
+You need Docker installed (no separate Postgres install required). One command:
 ```bash
 cd sql
 ./setup_pg.sh
 ```
-It prints a connection string. Copy the `export PREP_URL=...` line and run it:
-```bash
-export PREP_URL=postgresql://postgres:prep@localhost:5433/prep
-```
-Now you can run SQL (see Part 2).
+The script loads the data using the **container's own** `psql`, so it works even
+if you don't have a `psql` client on your Mac. When it finishes it prints how to
+connect, based on what you have:
+
+- **If you have a `psql` client** (`brew install libpq && brew link --force libpq`):
+  ```bash
+  export PREP_URL=postgresql://postgres:prep@localhost:5433/prep
+  psql "$PREP_URL" -c "SELECT * FROM servers LIMIT 5;"
+  ```
+- **If you don't** — just use the container's psql:
+  ```bash
+  docker exec -it prep-pg psql -U postgres -d prep          # interactive shell
+  docker exec -i  prep-pg psql -U postgres -d prep < myscratch.sql   # run a file
+  ```
+
 Stop it later with `docker rm -f prep-pg`. Re-run `./setup_pg.sh` any time to reset.
 
 ### Option B — Postgres you already have installed
@@ -46,7 +56,7 @@ differ (dates/rounding). Everything else is identical.
 
 ## Part 2 — Run a query (three equivalent ways)
 
-**Postgres (Options A/B):** use `psql`.
+**Postgres with a host `psql` client (Options A/B):**
 ```bash
 # one-off query inline:
 psql "$PREP_URL" -c "SELECT * FROM servers LIMIT 5;"
@@ -56,6 +66,13 @@ psql "$PREP_URL" -f myscratch.sql
 
 # interactive shell (type queries, end with ; , quit with \q):
 psql "$PREP_URL"
+```
+
+**Postgres via Docker without a host `psql` (most common on a fresh Mac):**
+```bash
+docker exec -it prep-pg psql -U postgres -d prep            # interactive shell
+docker exec -i  prep-pg psql -U postgres -d prep -c "SELECT * FROM servers LIMIT 5;"
+docker exec -i  prep-pg psql -U postgres -d prep < myscratch.sql   # run a file
 ```
 Handy psql tips inside the shell: `\dt` lists tables, `\d servers` describes a
 table, `\x` toggles expanded (vertical) output for wide rows.
@@ -140,7 +157,10 @@ Daily checklist:
 ---
 
 ## Troubleshooting
-- `psql: command not found` → install Postgres client, or use Option C (SQLite).
+- `psql: command not found` → you don't have a host Postgres client. Either use
+  the container's psql (`docker exec -it prep-pg psql -U postgres -d prep`),
+  install one (`brew install libpq && brew link --force libpq`), or use the
+  SQLite fallback (Option C).
 - `PREP_URL` empty → re-run the `export PREP_URL=...` line from setup output.
 - Docker port in use → edit `PORT` in `setup_pg.sh` (default 5433).
 - Want to reset data → re-run `./setup_pg.sh` (Postgres) or `python3 build_db.py` (SQLite).

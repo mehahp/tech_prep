@@ -53,12 +53,22 @@ for _ in $(seq 1 30); do
 done
 echo " ready"
 
-export PGPASSWORD=prep
-psql -h localhost -p ${PORT} -U postgres -d prep -q -f schema.sql -f seed.sql
+# Load using the CONTAINER's own psql (so no host psql install is required).
+cat schema.sql seed.sql | docker exec -i "$NAME" psql -U postgres -d prep -q
 echo "✔ loaded schema + data"
 echo
-echo "Connect with:"
-echo "  export PREP_URL=postgresql://postgres:prep@localhost:${PORT}/prep"
-echo "  psql \"\$PREP_URL\" -c \"SELECT * FROM servers LIMIT 5;\""
+if command -v psql >/dev/null; then
+  echo "Practice from your terminal (psql client detected):"
+  echo "  export PREP_URL=postgresql://postgres:prep@localhost:${PORT}/prep"
+  echo "  psql \"\$PREP_URL\" -c \"SELECT * FROM servers LIMIT 5;\""
+  echo "  psql \"\$PREP_URL\" -f myscratch.sql"
+else
+  echo "No psql client on this machine — use the container's psql instead:"
+  echo "  docker exec -it $NAME psql -U postgres -d prep        # interactive shell"
+  echo "  docker exec -i  $NAME psql -U postgres -d prep < myscratch.sql"
+  echo
+  echo "(Optional, for a nicer workflow:  brew install libpq && brew link --force libpq"
+  echo " then: export PREP_URL=postgresql://postgres:prep@localhost:${PORT}/prep )"
+fi
 echo
-echo "Stop/remove later with:  docker rm -f $NAME"
+echo "Stop/remove the container later with:  docker rm -f $NAME"
