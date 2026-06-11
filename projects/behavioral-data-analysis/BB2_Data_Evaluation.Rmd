@@ -1,0 +1,152 @@
+---
+title: "BB2 Data Evaluation Tasks"
+author: "Meha Patel"
+date: '2022-10-28'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+```{r}
+#loading libraries
+library(plyr)
+library(psych)
+library(ltm)
+```
+
+## Task 1
+```{r}
+#loading data sets (paths are relative to this .Rmd file)
+Wave1 = read.csv("data/Wave1.csv", header=TRUE)
+Wave4 = read.csv("data/Wave4.csv", header=TRUE)
+Wave6 = read.csv("data/Wave6.csv", header=TRUE)
+#re-coding missing values as 'NA'
+Wave1[Wave1 == -666 |Wave1 == -888 |Wave1 == -999] <- NA  
+Wave4[Wave4 == -666 |Wave4 == -888 |Wave4 == -999] <- NA
+Wave6[Wave6 == -444] <- NA
+```
+
+## Task 2
+```{r}
+# renaming variable names for each wave
+colnames(Wave1) <- c('ID','wave1','study_condition','crs011','crs021','crs041','crs061','crs161','crs221','crs241','crs251','crs271')
+colnames(Wave4) <- c('ID','wave4','crs014','crs024','crs044','crs064','crs164','crs224','crs244','crs254','crs274')
+colnames(Wave6) <- c('ID','wave6','crs016','crs026','crs046','crs066','crs166','crs226','crs246','crs256','crs276')
+```
+
+## Task 3
+```{r}
+#calculating and adding column for crsts: total crs value for each wave
+Wave1$crsts1 <- rowSums( Wave1[,4:12]) #taking sum of crs columns
+Wave4$crsts2 <- rowSums( Wave4[,3:11])
+Wave6$crsts3 <- rowSums( Wave6[,3:11])
+#calculating adding column for crsavg: average crs value for each wave
+Wave1$crsavg1 <- rowMeans( Wave1[,4:12]) #taking mean of crs columns
+Wave4$crsavg2 <- rowMeans( Wave4[,3:11])
+Wave6$crsavg3 <- rowMeans( Wave6[,3:11])
+```
+
+## Task 4
+```{r}
+#merging all three data sets into one named AllWaves
+AllWaves <- Reduce(function(x, y) merge(x, y, all=TRUE), list(Wave1, Wave4, Wave6)) #'reduce' takes a function with two arguments and and is "reduced" using f, for our example, we reduce our dataset by ID and combine all other columns
+```
+
+## Task 5
+```{r}
+#the 'describe' function inputs a data set (also accepts missing data) and outputs a contingency table with descriptive statistics of the given data set
+describe(AllWaves[,c("crsts1","crsavg1","crsts2","crsavg2","crsts3","crsavg3")])
+#the 'alpha' function calculates Cronbach's alpha as well as aditional descriptive statistics, for our purposes, we are only interested in the Cronbach alpha value for the desired data set
+#crsts1, crsavg1
+alpha(data.frame(AllWaves[,4:14]), na.rm = T, check.keys=TRUE)
+#crsts2, crsavg2
+alpha(data.frame(AllWaves[,16:26]), na.rm = T, check.keys=TRUE)
+#crsts3, crsavg3
+alpha(data.frame(AllWaves[,28:38]), na.rm = T, check.keys=TRUE)
+```
+
+## Task 6
+```{r}
+#Similar to task 5) we find the descriptive statistics of the given data set for each group of 'study_condition' value
+#study_condition 1
+describe(AllWaves[AllWaves$study_condition == "1",]) # we group the data set by a value in a certain column, in this case 'study_condition'
+alpha(AllWaves[AllWaves$study_condition == "1",], na.rm = T, check.keys=TRUE)
+#study_condition 2
+describe(AllWaves[AllWaves$study_condition == "2",])
+alpha(AllWaves[AllWaves$study_condition == "2",], na.rm = T, check.keys=TRUE)
+#study_condition 3
+describe(AllWaves[AllWaves$study_condition == "3",])
+alpha(AllWaves[AllWaves$study_condition == "3",], na.rm = T, check.keys=TRUE)
+#study_condition 4
+describe(AllWaves[AllWaves$study_condition == "4",])
+alpha(AllWaves[AllWaves$study_condition == "4",], na.rm = T, check.keys=TRUE)
+```
+
+## Task 7
+```{r}
+#we plot a scatter plot of three variables: crsts1, crsts2, crsts3 by ID value on the same plot
+plot(AllWaves$ID, AllWaves$crsts1, col = 'red', xlab = 'ID', ylab = 'crsts', main = 'Scatterplot of total crs values for each ID')
+  points(AllWaves$ID, AllWaves$crsts2, col = 'blue') 
+  points(AllWaves$ID, AllWaves$crsts3, col = 'green')
+  legend('topleft', c('crsts1','crsts2','crsts3'), 
+         cex = 0.5,  fill = c('red','blue','green'))
+  
+#we plot a scatter plot of three variables: crsavg1, crsavg2, crsavg3 by ID value on the same plot  
+plot(AllWaves$ID, AllWaves$crsavg1, col = 'red', xlab = 'ID', ylab = 'crsavg', main = 'Scatterplot of average crs values for each ID')
+  points(AllWaves$ID, AllWaves$crsavg2, col = 'blue')
+  points(AllWaves$ID, AllWaves$crsavg3, col = 'green')
+  legend('topleft', c('crsavg1','crsavg2','crsavg3'), 
+         cex = 0.5,  fill = c('red','blue','green'))
+
+#we plot a histogram of three variables: crsts1, crsts2, crsts3 and record their total frequency, here we are also able to see the difference in frequency between each variable
+hist(AllWaves$crsts1, col = 'red',
+     xlab = 'Total crs values', ylab = 'Frequency', main = 'Histogram for Frequency of total crs values')
+hist(AllWaves$crsts2, col = 'blue', add = T)
+hist(AllWaves$crsts3, col = 'green', add = T)
+legend('topleft', c('crsts1','crsts2','crsts3'),
+       cex = 0.5, fill = c('red','blue','green'))
+
+#we plot a histogram of three variables: crsavg1, crsavg2, crsavg3 and record their total frequency, here we are also able to see the difference in frequency between each variable
+hist(AllWaves$crsavg1, col = 'red',
+     xlab = 'Average crs values', ylab = 'Frequency', main = 'Histogram for Frequency of average crs values')
+hist(AllWaves$crsavg2, col = 'blue', add = T)
+hist(AllWaves$crsavg3, col = 'green', add = T)
+legend('topleft', c('crsts1','crsts2','crsts3'),
+        cex = 0.5, fill = c('red','blue','green'))
+```
+**Results:**
+
+From our scatterplot, we notice that outliers occur near the following ID values: $7120, 7250, 7310,7320, 7350, 7450$.
+
+## Task 8
+```{r}
+#creating subset data set called 'NewWaves' with desired columns from 'AllWaves' dataset
+NewWaves <- AllWaves[,c("ID","study_condition","crsts1","crsavg1","crsts2","crsavg2","crsts3","crsavg3")]
+```
+
+## Task 9
+```{r}
+# re-coding 'study_condition' values so that all previous "4" become "0"
+NewWaves["study_condition"][NewWaves["study_condition"] == "4"] <- "0"
+```
+
+## Task 10
+```{r}
+# we fit a linear regression model for crsts3 with co variates crsts2, csrsts1, and study_condition from 'NewWaves' data set
+model.crsts = lm(crsts3 ~ crsts2+ crsts1 + study_condition, data= NewWaves)
+# we output the regression summary, in which we are interested in the p-value
+summary(model.crsts)
+
+# we fit a linear regression model for crsavg3 with co variates crsavg2, csrsavg1, and study_condition from 'NewWaves' data set
+model.crsavg = lm(crsavg3 ~ crsavg2+ crsavg1 + study_condition, data= NewWaves)
+# we output the regression summary, in which we are interested in the p-value
+summary(model.crsavg)
+```
+**Results:**
+From our first model, we find that the p-value for crsts2 is $0.395> 0.05$, which is a general significance level. Therefore, we conclude that crsts2 is not a significant predictor for crsts3 when csrts1 and study condition are controlled for. 
+
+From our second model, we find that the p-value for csravg is $0.249> 0.05$, which is a general significance level. Therefore, we conclude that crsavg2 is not a significant predictor for crsavg3 when crsavg1 and study_condition are controlled for. 

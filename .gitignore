@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# MATLAB
+*.asv
+slprj/
+figs/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
